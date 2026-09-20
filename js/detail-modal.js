@@ -57,10 +57,12 @@ function openTeamModal(teamName) {
   if (!team) return;
 
   const created = team.createdCaches
-    .map(
-      (g) =>
-        `<li>${nameButton("geocache", g.fullName)} <span class="badge">${g.finders.length} znalazło</span></li>`
-    )
+    .map((g) => {
+      const status = g.isValid
+        ? `<span class="badge">${g.finders.length} znalazło</span>`
+        : `<span class="invalid-badge">⚠ zła lokalizacja</span>`;
+      return `<li>${nameButton("geocache", g.fullName)} ${status}</li>`;
+    })
     .join("") || "<li class=\"muted\">Brak</li>";
 
   const found = team.foundCaches

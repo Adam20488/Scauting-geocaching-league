@@ -105,6 +105,12 @@ th {
   min-width: 10rem;
 }
 
+/* Full geocache names are "Drużyna: Nazwa skrytki" — reliably longer than a
+   plain team name, so give that column extra room. */
+.col-name-wide {
+  min-width: 16rem;
+}
+
 .link-btn {
   background: none;
   border: none;
@@ -115,6 +121,7 @@ th {
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
+  text-align: left;
 }
 
 .link-btn:hover {
@@ -197,8 +204,10 @@ th {
   background: var(--surface);
   border-radius: 12px;
   padding: 1.5rem 1.75rem;
-  max-width: 560px;
+  max-width: 620px;
   width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
 }
@@ -235,6 +244,14 @@ th {
   border: 1px solid #fde68a;
   padding: 0.6rem 0.8rem;
   border-radius: 8px;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.invalid-badge {
+  color: #9a3412;
+  font-weight: 700;
+  font-size: 0.75rem;
 }
 
 .invalid-flag {
@@ -321,6 +338,21 @@ th {
   margin: 0 0 0.4rem;
 }
 
+.leaflet-popup-content-wrapper {
+  border-radius: 10px;
+}
+
+.leaflet-popup-content {
+  margin: 0.85rem 1rem;
+  width: 260px !important;
+}
+
+@media (max-width: 720px) {
+  .leaflet-popup-content {
+    width: min(78vw, 320px) !important;
+  }
+}
+
 #invalid-panel {
   margin-top: 1rem;
 }
@@ -392,8 +424,13 @@ button.warning-btn {
 /* Mobile */
 @media (max-width: 720px) {
   header.site-nav {
-    gap: 0.75rem;
+    gap: 0.5rem 0.75rem;
     padding: 0.75rem 1rem;
+  }
+
+  header.site-nav .brand {
+    flex-basis: 100%;
+    margin-right: 0;
   }
 
   main {

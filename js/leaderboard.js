@@ -42,7 +42,7 @@ function renderGeocacheList(data) {
         : "Nie udało się odczytać współrzędnych";
       return `
       <tr>
-        <td class="col-name">${nameButton("geocache", g.fullName)}</td>
+        <td class="col-name col-name-wide">${nameButton("geocache", g.fullName)}</td>
         <td class="col-name">${nameButton("team", g.creatorTeam)}</td>
         <td class="col-num">${g.finders.length}</td>
         <td class="col-num" title="${locationTitle}">${g.isValid ? "✅" : "⚠️"}</td>
