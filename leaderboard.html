@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ranking — Liga Geocachingowa</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-nav">
+    <span class="brand">🧭 Liga Geocachingowa</span>
+    <a href="rules.html">Regulamin</a>
+    <a href="leaderboard.html" class="active">Ranking</a>
+    <a href="map.html">Mapa</a>
+  </header>
+
+  <main>
+    <h1>Ranking i statystyki</h1>
+    <div id="load-error" class="hidden"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-target="panel-leaderboard">Ranking drużyn</button>
+      <button class="tab-btn" data-target="panel-geocaches">Wszystkie skrytki</button>
+    </div>
+
+    <section id="panel-leaderboard" class="tab-panel card">
+      <div class="table-scroll">
+        <table id="leaderboard-table">
+          <thead>
+            <tr>
+              <th class="col-num">#</th>
+              <th class="col-name">Drużyna</th>
+              <th class="col-num">Wynik</th>
+              <th class="col-num">Znalezione</th>
+              <th class="col-num">Utworzone</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-geocaches" class="tab-panel card hidden">
+      <div class="table-scroll">
+        <table id="geocache-table">
+          <thead>
+            <tr>
+              <th class="col-name">Skrytka</th>
+              <th class="col-name">Twórca</th>
+              <th class="col-num">Znalazły zespoły</th>
+              <th class="col-num">Lokalizacja</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/colors.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/loading.js"></script>
+  <script src="js/detail-modal.js"></script>
+  <script src="js/leaderboard.js"></script>
+</body>
+</html>

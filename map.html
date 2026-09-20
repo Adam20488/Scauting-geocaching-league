@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mapa — Liga Geocachingowa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-nav">
+    <span class="brand">🧭 Liga Geocachingowa</span>
+    <a href="rules.html">Regulamin</a>
+    <a href="leaderboard.html">Ranking</a>
+    <a href="map.html" class="active">Mapa</a>
+  </header>
+
+  <main>
+    <h1>Mapa skrytek</h1>
+    <div id="load-error" class="hidden"></div>
+
+    <div class="map-toolbar">
+      <button id="invalid-toggle" class="warning-btn">⚠ Nieprawidłowe lokalizacje (<span id="invalid-count">0</span>)</button>
+    </div>
+
+    <div id="invalid-panel" class="card hidden">
+      <h3>Skrytki z nieprawidłową lokalizacją</h3>
+      <p class="muted">Poniższe skrytki nie pojawiają się na mapie, bo ich lokalizacja nie dała się odczytać lub leży poza spodziewanym obszarem. Twórcy — prosimy o kontakt w celu poprawienia zgłoszenia.</p>
+      <ul id="invalid-list"></ul>
+    </div>
+
+    <div class="map-layout">
+      <div id="map"></div>
+      <aside id="legend-panel" class="card">
+        <h3>Drużyny</h3>
+        <ul id="legend-list"></ul>
+      </aside>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/colors.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/loading.js"></script>
+  <script src="js/detail-modal.js"></script>
+  <script src="js/map.js"></script>
+</body>
+</html>
