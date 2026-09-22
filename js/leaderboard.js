@@ -22,7 +22,7 @@ function renderLeaderboard(data) {
         <td class="col-num">${i + 1}</td>
         <td class="col-name"><span class="color-dot" style="background:${team.color}"></span>
             ${nameButton("team", team.name)}</td>
-        <td class="col-num"><strong>${team.score}</strong></td>
+        <td class="col-num"><strong>${formatScore(team.score)}</strong></td>
         <td class="col-num">${team.foundCaches.length}</td>
         <td class="col-num" title="${STATUS_LABEL[status]}">${STATUS_ICON[status]}</td>
       </tr>`;

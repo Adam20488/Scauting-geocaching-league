@@ -1,11 +1,20 @@
-// Deterministic, maximally-spread, bright team colors.
-// Golden-angle hue stepping: each successive team gets a hue as far as
-// possible from every hue already used, without needing to know the final
-// team count in advance. Same index always gives the same color.
-
-const GOLDEN_ANGLE = 137.508;
-
 function teamColor(index) {
-  const hue = (index * GOLDEN_ANGLE) % 360;
-  return `hsl(${hue.toFixed(1)}, 85%, 55%)`;
+  let hue = 0;
+  let fraction = 180;
+  let n = index;
+
+  while (n > 0) {
+    if (n % 2 === 1) {
+      hue += fraction;
+    }
+    n = Math.floor(n / 2);
+    fraction /= 2;
+  }
+
+  hue = (hue + 15) % 360;
+
+  const lightness = 45 + (index % 2) * 20;
+  const saturation = 80 + (index % 3) * 10;
+
+  return `hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`;
 }

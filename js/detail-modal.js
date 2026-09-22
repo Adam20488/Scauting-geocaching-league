@@ -51,6 +51,114 @@ function mapsLink(coords) {
     </a>`;
 }
 
+// --- Photo strip + lightbox (used only in the geocache modal) -----------
+
+function photoStripHtml(photos) {
+  if (!photos.length) return "";
+  const thumbs = photos
+    .map(
+      (url, i) => `
+      <button class="photo-thumb" data-index="${i}" aria-label="Powiększ zdjęcie ${i + 1}">
+        <span class="photo-spinner"></span>
+        <img src="${url}" alt="Zdjęcie skrytki ${i + 1}" loading="lazy" />
+      </button>`
+    )
+    .join("");
+  return `
+    <h3>Zdjęcia <span class="badge">${photos.length}</span></h3>
+    <div class="photo-strip">${thumbs}</div>`;
+}
+
+// Photos can be up to ~100MB, so each thumbnail shows its own spinner until
+// its 'load'/'error' fires — these events don't bubble, so they're wired up
+// individually right after the modal HTML is inserted.
+function bindPhotoStrip(photos) {
+  if (!photos.length) return;
+  const thumbs = document.querySelectorAll("#detail-modal-root .photo-thumb");
+  thumbs.forEach((btn, i) => {
+    const img = btn.querySelector("img");
+    const markLoaded = () => btn.classList.add("loaded");
+    const markError = () => btn.classList.add("errored");
+    if (img.complete && img.naturalWidth) markLoaded();
+    else {
+      img.addEventListener("load", markLoaded);
+      img.addEventListener("error", markError);
+    }
+    btn.addEventListener("click", () => openPhotoLightbox(photos, i));
+  });
+}
+
+let lightboxState = { photos: [], index: 0 };
+
+function ensureLightboxRoot() {
+  let root = document.getElementById("photo-lightbox-root");
+  if (root) return root;
+  root = document.createElement("div");
+  root.id = "photo-lightbox-root";
+  root.className = "lightbox-overlay hidden";
+  root.innerHTML = `
+    <button class="lightbox-close" aria-label="Zamknij">&times;</button>
+    <button class="lightbox-nav lightbox-prev" aria-label="Poprzednie zdjęcie">&#8249;</button>
+    <div class="lightbox-image-wrap">
+      <span class="photo-spinner"></span>
+      <img class="lightbox-img" alt="" />
+    </div>
+    <button class="lightbox-nav lightbox-next" aria-label="Następne zdjęcie">&#8250;</button>`;
+  document.body.appendChild(root);
+  root.addEventListener("click", (e) => {
+    if (e.target === root) closeLightbox();
+  });
+  root.querySelector(".lightbox-close").addEventListener("click", closeLightbox);
+  root.querySelector(".lightbox-prev").addEventListener("click", () => navigateLightbox(-1));
+  root.querySelector(".lightbox-next").addEventListener("click", () => navigateLightbox(1));
+  document.addEventListener("keydown", (e) => {
+    if (root.classList.contains("hidden")) return;
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") navigateLightbox(-1);
+    if (e.key === "ArrowRight") navigateLightbox(1);
+  });
+  return root;
+}
+
+function renderLightboxImage() {
+  const root = ensureLightboxRoot();
+  const wrap = root.querySelector(".lightbox-image-wrap");
+  const img = root.querySelector(".lightbox-img");
+  const multi = lightboxState.photos.length > 1;
+  root.querySelector(".lightbox-prev").classList.toggle("hidden", !multi);
+  root.querySelector(".lightbox-next").classList.toggle("hidden", !multi);
+
+  wrap.classList.remove("loaded");
+  img.classList.remove("loaded");
+  img.src = lightboxState.photos[lightboxState.index];
+  img.onload = () => {
+    wrap.classList.add("loaded");
+    img.classList.add("loaded");
+  };
+  img.onerror = () => {
+    wrap.classList.add("loaded", "errored");
+  };
+}
+
+function openPhotoLightbox(photos, index) {
+  lightboxState = { photos, index };
+  const root = ensureLightboxRoot();
+  renderLightboxImage();
+  root.classList.remove("hidden");
+}
+
+function closeLightbox() {
+  const root = document.getElementById("photo-lightbox-root");
+  if (root) root.classList.add("hidden");
+}
+
+function navigateLightbox(delta) {
+  const count = lightboxState.photos.length;
+  if (!count) return;
+  lightboxState.index = (lightboxState.index + delta + count) % count;
+  renderLightboxImage();
+}
+
 function openTeamModal(teamName) {
   const data = window.LEAGUE_DATA;
   const team = data && data.teams.get(teamName);
@@ -71,7 +179,7 @@ function openTeamModal(teamName) {
 
   showModal(`
     <h2><span class="color-dot" style="background:${team.color}"></span>${team.name}</h2>
-    <p class="score-line">Wynik: <strong>${team.score}</strong>
+    <p class="score-line">Wynik: <strong>${formatScore(team.score)}</strong>
       (stworzenie: ${team.stworzenie}, znalezienia: ${team.znalezienia}, suma: ${team.suma})</p>
     <h3>Utworzone skrytki <span class="badge">${team.createdCaches.length}</span></h3>
     <ul class="detail-list">${created}</ul>
@@ -102,7 +210,15 @@ function openGeocacheModal(fullName) {
     <p>Utworzona przez: ${nameButton("team", geocache.creatorTeam)}</p>
     <p class="hint-box"><strong>Wskazówka:</strong> ${geocache.hint || "<span class=\"muted\">brak</span>"}</p>
     ${locationInfo}
+    <p class="stats-line">Znalazły: <strong>${geocache.finders.length}</strong> &nbsp;·&nbsp;
+      Nie znalazły: <strong>${geocache.lacks}</strong></p>
+    ${photoStripHtml(geocache.photos)}
     <h3>Zespoły, które znalazły <span class="badge">${geocache.finders.length}</span></h3>
     ${finders}
+    <div class="form-btn-row">
+      ${formButton("findHiding")}
+      ${formButton("reportNotFound")}
+    </div>
   `);
+  bindPhotoStrip(geocache.photos);
 }

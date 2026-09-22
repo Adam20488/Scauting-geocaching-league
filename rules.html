@@ -29,6 +29,26 @@
       <h2>5. Kontakt</h2>
       <p>Podaj dane kontaktowe organizatora na wypadek problemów ze zgłoszeniami.</p>
     </div>
+
+    <div class="card">
+      <h2>Formularze</h2>
+      <div class="forms-grid">
+        <span id="forms-container"></span>
+      </div>
+    </div>
   </main>
+
+  <script src="js/forms.js"></script>
+  <script>
+    document.getElementById("forms-container").outerHTML = [
+      "registerTeam",
+      "createHiding",
+      "findHiding",
+      "reportNotFound",
+      "fixNotFound",
+    ]
+      .map((key) => formButton(key))
+      .join("");
+  </script>
 </body>
 </html>

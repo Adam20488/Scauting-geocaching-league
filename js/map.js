@@ -17,11 +17,18 @@ function renderMap(data) {
 
   const validCaches = data.geocacheList.filter((g) => g.isValid);
 
+  // Real hover only exists on mouse-driven devices — on touch, a tap can
+  // fire a synthetic "mouseover" right before "click", which is what made
+  // the quick-preview popup flash distractingly before the full modal took
+  // over. Skip hover there entirely; click still opens the modal directly.
+  const supportsHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
   validCaches.forEach((g) => {
     const team = data.teams.get(g.creatorTeam);
     const color = team ? team.color : "#888";
     const marker = L.marker([g.coords.lat, g.coords.lon], {
       icon: coloredDivIcon(color),
+      keyboard: false, // avoid focus-triggered auto-scroll on tap
     }).addTo(map);
 
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${g.coords.lat},${g.coords.lon}`;
@@ -38,14 +45,18 @@ function renderMap(data) {
             Otwórz w Google Maps
           </a>
         </div>`,
-      { maxHeight: 260 }
+      // autoPan off — panning the map on every hover felt jumpy/unwanted.
+      { maxHeight: 260, autoPan: false }
     );
 
-    // Quick preview on hover, full stats modal on click/tap — the leaflet
-    // popup's own click-to-open is removed so it doesn't fight with that.
+    // Quick preview on hover (mouse-driven devices only), full stats modal
+    // on click/tap — the leaflet popup's own click-to-open is removed so
+    // it doesn't fight with that.
     marker.off("click");
-    marker.on("mouseover", () => marker.openPopup());
-    marker.on("mouseout", () => marker.closePopup());
+    if (supportsHover) {
+      marker.on("mouseover", () => marker.openPopup());
+      marker.on("mouseout", () => marker.closePopup());
+    }
     marker.on("click", () => openGeocacheModal(g.fullName));
   });
 

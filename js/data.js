@@ -13,6 +13,7 @@ const FIELD = {
   location: "Lokalizacja - skopiowane koordynaty z Google Maps",
   cacheName: "Nazwa skrytki",
   hint: "Wskazówki skrytki",
+  photos: "zdjęcia",
   fullName: "Pełna nazwa",
 };
 
@@ -67,6 +68,12 @@ function parseLocation(raw) {
   return { coords: parsed, reason: null };
 }
 
+// Integer scores show as-is; anything else rounds to 1 decimal (dzielnik can
+// produce repeating decimals like 1/3).
+function formatScore(score) {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
 // --- Main model builder --------------------------------------------------
 
 async function fetchLeagueData() {
@@ -101,11 +108,13 @@ async function fetchLeagueData() {
       cacheName: row[FIELD.cacheName],
       creatorTeam: row[FIELD.teamName],
       hint: row[FIELD.hint] || "",
+      photos: Array.isArray(row[FIELD.photos]) ? row[FIELD.photos] : [],
       rawLocation,
       coords,
       invalidReason: reason,
       isValid: coords !== null,
       finders: [],
+      lacks: 0,
     };
     geocaches.set(fullName, geocache);
     const creator = teams.get(geocache.creatorTeam);
@@ -119,6 +128,12 @@ async function fetchLeagueData() {
     const geocache = geocaches.get(targetFullName);
     if (geocache) geocache.finders.push(finderName);
     if (finder && geocache) finder.foundCaches.push(geocache);
+  });
+
+  // "count " (with a trailing space) is exactly how the endpoint names it.
+  (raw.lacksData || []).forEach((row) => {
+    const geocache = geocaches.get(row["nazwa skrytki"]);
+    if (geocache) geocache.lacks = row["count "] || 0;
   });
 
   const teamList = [...teams.values()].sort((a, b) => b.score - a.score);
