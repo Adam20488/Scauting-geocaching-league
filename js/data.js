@@ -98,11 +98,45 @@ export function getLeagueData() {
   return leagueData;
 }
 
-export async function fetchLeagueData() {
+const RAW_CACHE_KEY = "geocaching-league-raw";
+
+// True when this page was opened by a browser reload (F5 / hard reload), as
+// opposed to navigating in from another page of the site.
+function isPageReload() {
+  const [nav] = performance.getEntriesByType("navigation");
+  return nav?.type === "reload";
+}
+
+// The Apps Script backend is slow, so re-fetching on every in-site navigation
+// broke the UX. The raw response is kept in sessionStorage (per tab) and is
+// re-downloaded only on a browser reload or when `force` is set (refresh button).
+export async function fetchLeagueData({ force = false } = {}) {
+  if (!force && !isPageReload()) {
+    try {
+      const cached = sessionStorage.getItem(RAW_CACHE_KEY);
+      if (cached) return setModel(buildModel(JSON.parse(cached)));
+    } catch {
+      // unreadable cache — fall through to a real fetch
+    }
+  }
+
   const res = await fetch(ENDPOINT_URL);
   if (!res.ok) throw new Error(`Endpoint returned ${res.status}`);
-  const raw = await res.json();
+  const text = await res.text();
+  try {
+    sessionStorage.setItem(RAW_CACHE_KEY, text);
+  } catch {
+    // storage full or disabled — still works, just without caching
+  }
+  return setModel(buildModel(JSON.parse(text)));
+}
 
+function setModel(model) {
+  leagueData = model;
+  return model;
+}
+
+function buildModel(raw) {
   const teams = new Map();
   (raw.scores || []).forEach((row, index) => {
     const name = row[FIELD.scoreTeamName];
@@ -183,11 +217,19 @@ export async function fetchLeagueData() {
     team.score = team.znalezienia + team.creationPoint;
   });
 
+  // Troop -> its zastępy, so the team popup can show the troop and its members.
+  const troops = new Map();
+  teams.forEach((team) => {
+    if (team.troop == null) return;
+    if (!troops.has(team.troop)) {
+      troops.set(team.troop, { name: team.troop, color: team.color, teams: [] });
+    }
+    troops.get(team.troop).teams.push(team);
+  });
+
   const teamList = [...teams.values()].sort((a, b) => b.score - a.score);
   const geocacheList = [...geocaches.values()];
   const invalidGeocaches = geocacheList.filter((g) => !g.isValid);
 
-  const model = { teams, geocaches, teamList, geocacheList, invalidGeocaches };
-  leagueData = model;
-  return model;
+  return { teams, troops, geocaches, teamList, geocacheList, invalidGeocaches };
 }

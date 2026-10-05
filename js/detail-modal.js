@@ -213,8 +213,14 @@ function openTeamModal(teamName) {
     .map((g) => `<li>${nameButton("geocache", g.fullName)}</li>`)
     .join("") || "<li class=\"muted\">Brak</li>";
 
+  const troop = team.troop != null ? data.troops.get(team.troop) : null;
+  const troopInfo = troop
+    ? `<p class="troop-info">Drużyna: <strong>${escapeHtml(troop.name)}</strong></p>`
+    : "";
+
   showModal(`
     <h2><span class="color-dot" style="background:${team.color}"></span>${escapeHtml(team.name)}</h2>
+    ${troopInfo}
     <p class="score-line">Wynik: <strong>${formatScore(team.score)}</strong>
       (własna skrytka: ${team.creationPoint}, znalezienia: ${team.znalezienia})</p>
     <h3>Utworzone skrytki <span class="badge">${team.createdCaches.length}</span></h3>

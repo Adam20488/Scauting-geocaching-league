@@ -23,12 +23,24 @@ function coloredDivIcon(color) {
   });
 }
 
-function renderMap(data) {
-  const map = L.map("map").setView([52.4064, 16.9252], 12); // Poznań
+// Leaflet throws if the same container is initialised twice, so the map is
+// created once and only its marker layer is rebuilt on refresh.
+let map = null;
+let markerLayer = null;
+
+function ensureMap() {
+  if (map) return;
+  map = L.map("map").setView([52.4064, 16.9252], 12); // Poznań
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function renderMap(data) {
+  ensureMap();
+  markerLayer.clearLayers();
 
   const validCaches = data.geocacheList.filter((g) => g.isValid);
 
@@ -44,7 +56,7 @@ function renderMap(data) {
     const marker = L.marker([g.coords.lat, g.coords.lon], {
       icon: coloredDivIcon(color),
       keyboard: false, // avoid focus-triggered auto-scroll on tap
-    }).addTo(map);
+    }).addTo(markerLayer);
 
     marker.bindPopup(
       `
@@ -121,14 +133,14 @@ function initInvalidPanelToggle() {
   btn.addEventListener("click", () => panel.classList.toggle("hidden"));
 }
 
-async function init() {
-  initInvalidPanelToggle();
+async function load({ force = false } = {}) {
   showLoading();
   try {
-    const data = await fetchLeagueData();
+    const data = await fetchLeagueData({ force });
     renderMap(data);
     renderLegend(data);
     renderInvalidPanel(data);
+    document.getElementById("load-error").classList.add("hidden");
   } catch (err) {
     document.getElementById("load-error").classList.remove("hidden");
     document.getElementById("load-error").textContent =
@@ -139,4 +151,6 @@ async function init() {
   }
 }
 
-init();
+initInvalidPanelToggle();
+document.getElementById("refresh-btn").addEventListener("click", () => load({ force: true }));
+load();

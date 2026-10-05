@@ -66,13 +66,13 @@ function initTabs() {
   });
 }
 
-async function init() {
-  initTabs();
+async function load({ force = false } = {}) {
   showLoading();
   try {
-    const data = await fetchLeagueData();
+    const data = await fetchLeagueData({ force });
     renderLeaderboard(data);
     renderGeocacheList(data);
+    document.getElementById("load-error").classList.add("hidden");
   } catch (err) {
     document.getElementById("load-error").classList.remove("hidden");
     document.getElementById("load-error").textContent =
@@ -83,4 +83,6 @@ async function init() {
   }
 }
 
-init();
+initTabs();
+document.getElementById("refresh-btn").addEventListener("click", () => load({ force: true }));
+load();
