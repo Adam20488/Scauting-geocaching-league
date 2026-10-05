@@ -222,7 +222,7 @@ function openTeamModal(teamName) {
     <h2><span class="color-dot" style="background:${team.color}"></span>${escapeHtml(team.name)}</h2>
     ${troopInfo}
     <p class="score-line">Wynik: <strong>${formatScore(team.score)}</strong>
-      (własna skrytka: ${team.creationPoint}, znalezienia: ${team.znalezienia})</p>
+      (własna skrytka: ${team.creationPoint}, znalezienia: ${team.znalezienia}, kary za braki: ${team.penalty})</p>
     <h3>Utworzone skrytki <span class="badge">${team.createdCaches.length}</span></h3>
     <ul class="detail-list">${created}</ul>
     <h3>Znalezione skrytki <span class="badge">${team.foundCaches.length}</span></h3>

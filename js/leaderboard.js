@@ -28,6 +28,7 @@ function renderLeaderboard(data) {
             ${nameButton("team", team.name)}</td>
         <td class="col-num"><strong>${formatScore(team.score)}</strong></td>
         <td class="col-num">${team.foundCaches.length}</td>
+        <td class="col-num">${team.penalty || "–"}</td>
         <td class="col-num" title="${STATUS_LABEL[status]}">${STATUS_ICON[status]}</td>
       </tr>`;
     })

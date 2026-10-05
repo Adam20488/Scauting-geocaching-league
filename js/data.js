@@ -146,6 +146,7 @@ function buildModel(raw) {
       troop: null, // filled in below, once creation rows are processed
       color: null, // ditto — color is assigned per troop, not per team
       znalezienia: Number(row.znalezienia) || 0,
+      penalty: Number(row["ujemne punkty za braki"]) || 0, // ≤ 0, from prolonged lacks
       creationPoint: 0,
       score: 0,
       createdCaches: [],
@@ -203,18 +204,17 @@ function buildModel(raw) {
   });
 
   // "count " (with a trailing space) is exactly how the endpoint names it.
-  (raw.lacksData || []).forEach((row) => {
+  (raw.lacks || []).forEach((row) => {
     const geocache = geocaches.get(row["nazwa skrytki"]);
     if (geocache) geocache.lacks = row["count "] || 0;
   });
 
   // Score = finding points + 1 if the team's own hiding has a valid
-  // location, 0 otherwise (each team has exactly one hiding now, so this is
-  // just "does any of its created caches validate" — normally just the one).
+  // location, 0 otherwise, plus the (non-positive) penalty for prolonged lacks.
   teams.forEach((team) => {
     team.color = teamColor(team.troop != null ? troopOrder.get(team.troop) : team.order);
     team.creationPoint = team.createdCaches.some((g) => g.isValid) ? 1 : 0;
-    team.score = team.znalezienia + team.creationPoint;
+    team.score = team.znalezienia + team.creationPoint + team.penalty;
   });
 
   // Troop -> its zastępy, so the team popup can show the troop and its members.
