@@ -1,20 +1,34 @@
 // Central data layer: fetches the league endpoint once and builds a fully
 // cross-linked in-memory model that every page reads from. No DOM code here.
 
+import { teamColor } from "./colors.js";
+import { isSafeHttpUrl } from "./security.js";
+
 const ENDPOINT_URL =
   "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnTR3vh8s1nyNuK40IXgKUbVGjj5QXlitWE6_kG1NGBTD37aBCCzPIInzbQDeTKVvblI8JcY6kgy3bgUdDNN6b0JmActxQ63Qsf29CsaUA4RaLghUJSiPtN3ZFqdduoSbUrS-kObUc-NGn7-hA1f3ClLABDbjpY5Od-YMuGhQRUUQKKzBVt4gCFe_hUBi9c4XSIPrmsuWIkHweR5Rrj0gAZ1ncV1XQMepQxWxfZPLS6mTjOqIABW2HnsW2CQosvMzkZXrtNRu0R_8y4AlL6HCq8r_waZog&lib=MFp1IkcbZkiqOZNIX9XpwU9ZMTqRCn_1T";
 
 // Plausibility box around Poznań — catches parseable-but-wrong coordinates
 // (swapped lat/lon, fat-fingered digits) without depending on exact matches.
-const BOUNDS = { minLat: 52.25, maxLat: 52.55, minLon: 16.75, maxLon: 17.1 };
+const BOUNDS = { minLat: 52.3, maxLat: 52.5, minLon: 16.75, maxLon: 17.2 };
 
 const FIELD = {
-  teamName: "Nazwa zastępu/drużyny",
-  location: "Lokalizacja - skopiowane koordynaty z Google Maps",
+  // Registration + hiding-creation are one form now, so the team-name key
+  // differs between that sheet ("creation") and the scores/findings sheets,
+  // which still use the older combined key.
+  creationTeamName: "Nazwa zastępu",
+  scoreTeamName: "Nazwa zastępu/drużyny",
+  troop: "Drużyna",
+  location: `Lokalizacja
+(format Google Maps, czyli np.:
+52.379898, 16.947147
+52°22'47.6"N 16°56'49.7"E)`,
   cacheName: "Nazwa skrytki",
   hint: "Wskazówki skrytki",
   photos: "zdjęcia",
   fullName: "Pełna nazwa",
+  // "Adres e-mail" also comes through on this sheet (Google Forms' own
+  // "collect email" setting) but is deliberately never read here — it's
+  // the submitter's personal address and has no business in a public model.
 };
 
 // --- Coordinate parsing -----------------------------------------------
@@ -68,47 +82,68 @@ function parseLocation(raw) {
   return { coords: parsed, reason: null };
 }
 
-// Integer scores show as-is; anything else rounds to 1 decimal (dzielnik can
-// produce repeating decimals like 1/3).
-function formatScore(score) {
+// Score is always an integer now (finding count + 0 or 1), but this stays
+// defensive in case a fractional value ever comes back from the endpoint.
+export function formatScore(score) {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }
 
 // --- Main model builder --------------------------------------------------
 
-async function fetchLeagueData() {
+// The most recently fetched model, so UI modules (e.g. the detail modal) can
+// look things up on demand without the data being passed through every call.
+let leagueData = null;
+
+export function getLeagueData() {
+  return leagueData;
+}
+
+export async function fetchLeagueData() {
   const res = await fetch(ENDPOINT_URL);
   if (!res.ok) throw new Error(`Endpoint returned ${res.status}`);
   const raw = await res.json();
 
   const teams = new Map();
   (raw.scores || []).forEach((row, index) => {
-    const name = row["zastęp"];
+    const name = row[FIELD.scoreTeamName];
     teams.set(name, {
       name,
       order: index,
-      color: teamColor(index),
-      score: row.score,
-      dzielnik: row.dzielnik,
-      stworzenie: row.stworzenie,
-      znalezienia: row.znalezienia,
-      suma: row.suma,
+      troop: null, // filled in below, once creation rows are processed
+      color: null, // ditto — color is assigned per troop, not per team
+      znalezienia: Number(row.znalezienia) || 0,
+      creationPoint: 0,
+      score: 0,
       createdCaches: [],
       foundCaches: [],
     });
   });
 
+  // Troop ("Drużyna") owns the marker color now, not the individual team —
+  // several teams/zastępy can belong to the same troop. Colors are assigned
+  // in first-appearance order within this sheet (registration order, since
+  // registration and hiding-creation are the same form submission now).
+  const troopOrder = new Map();
   const geocaches = new Map();
   (raw.creation || []).forEach((row) => {
     const fullName = row[FIELD.fullName];
     const rawLocation = row[FIELD.location] || "";
     const { coords, reason } = parseLocation(rawLocation);
+    const creatorTeam = row[FIELD.creationTeamName];
+    const troop = row[FIELD.troop] || creatorTeam;
+    if (!troopOrder.has(troop)) troopOrder.set(troop, troopOrder.size);
+
+    const photos = Array.isArray(row[FIELD.photos])
+      ? row[FIELD.photos].filter(isSafeHttpUrl)
+      : [];
+
     const geocache = {
       fullName,
       cacheName: row[FIELD.cacheName],
-      creatorTeam: row[FIELD.teamName],
+      creatorTeam,
+      troop,
       hint: row[FIELD.hint] || "",
-      photos: Array.isArray(row[FIELD.photos]) ? row[FIELD.photos] : [],
+      photos,
       rawLocation,
       coords,
       invalidReason: reason,
@@ -117,12 +152,15 @@ async function fetchLeagueData() {
       lacks: 0,
     };
     geocaches.set(fullName, geocache);
-    const creator = teams.get(geocache.creatorTeam);
-    if (creator) creator.createdCaches.push(geocache);
+    const creator = teams.get(creatorTeam);
+    if (creator) {
+      creator.createdCaches.push(geocache);
+      creator.troop = troop;
+    }
   });
 
   (raw.findings || []).forEach((row) => {
-    const finderName = row[FIELD.teamName];
+    const finderName = row[FIELD.scoreTeamName];
     const targetFullName = row[FIELD.cacheName];
     const finder = teams.get(finderName);
     const geocache = geocaches.get(targetFullName);
@@ -136,11 +174,20 @@ async function fetchLeagueData() {
     if (geocache) geocache.lacks = row["count "] || 0;
   });
 
+  // Score = finding points + 1 if the team's own hiding has a valid
+  // location, 0 otherwise (each team has exactly one hiding now, so this is
+  // just "does any of its created caches validate" — normally just the one).
+  teams.forEach((team) => {
+    team.color = teamColor(team.troop != null ? troopOrder.get(team.troop) : team.order);
+    team.creationPoint = team.createdCaches.some((g) => g.isValid) ? 1 : 0;
+    team.score = team.znalezienia + team.creationPoint;
+  });
+
   const teamList = [...teams.values()].sort((a, b) => b.score - a.score);
   const geocacheList = [...geocaches.values()];
   const invalidGeocaches = geocacheList.filter((g) => !g.isValid);
 
   const model = { teams, geocaches, teamList, geocacheList, invalidGeocaches };
-  window.LEAGUE_DATA = model;
+  leagueData = model;
   return model;
 }

@@ -1,5 +1,9 @@
 // Shared "team detail" / "geocache detail" modal, used by both the
-// leaderboard and map pages. Reads from window.LEAGUE_DATA on demand.
+// leaderboard and map pages. Reads the current data via getLeagueData().
+
+import { getLeagueData, formatScore } from "./data.js";
+import { formButton } from "./forms.js";
+import { escapeHtml } from "./security.js";
 
 function ensureModalRoot() {
   let root = document.getElementById("detail-modal-root");
@@ -34,10 +38,40 @@ function showModal(html) {
   root.classList.remove("hidden");
 }
 
-function nameButton(kind, label) {
-  const esc = label.replace(/"/g, "&quot;");
-  const fn = kind === "team" ? "openTeamModal" : "openGeocacheModal";
-  return `<button class="link-btn" onclick='${fn}(${JSON.stringify(label)})'>${esc}</button>`;
+// Buttons carry their target in data attributes instead of inline onclick
+// handlers (which would need global functions) — one delegated listener
+// below handles every one of them, wherever on the page they were rendered.
+export function nameButton(kind, label) {
+  const esc = escapeHtml(label);
+  return `<button class="link-btn" data-kind="${kind}" data-name="${esc}">${esc}</button>`;
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".link-btn[data-kind]");
+  if (!btn) return;
+  if (btn.dataset.kind === "team") openTeamModal(btn.dataset.name);
+  else openGeocacheModal(btn.dataset.name);
+});
+
+// Polish noun/verb agreement for "N drużyn(a/y) zgłosiła/zgłosiły" — used
+// only in the tooltip text, so it's worth getting the grammar right.
+function polishTeamCount(n) {
+  if (n === 1) return { noun: "drużyna", verb: "zgłosiła" };
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) {
+    return { noun: "drużyny", verb: "zgłosiły" };
+  }
+  return { noun: "drużyn", verb: "zgłosiło" };
+}
+
+// Compact "not found" warning — only takes any space when it applies, and
+// keeps the explanation in a hover tooltip rather than the main view.
+export function lackBadge(count) {
+  if (!count) return "";
+  const { noun, verb } = polishTeamCount(count);
+  const title = `${count} ${noun} ${verb} ostatnio, że nie udało się jej znaleźć`;
+  return `<span class="lack-badge" title="${title}">⚠ nieznaleziona ×${count}</span>`;
 }
 
 function mapsLink(coords) {
@@ -55,12 +89,14 @@ function mapsLink(coords) {
 
 function photoStripHtml(photos) {
   if (!photos.length) return "";
+  // Photo URLs are already scheme-validated (https/http only) back in
+  // data.js — still escaped here since they're going into an attribute.
   const thumbs = photos
     .map(
       (url, i) => `
       <button class="photo-thumb" data-index="${i}" aria-label="Powiększ zdjęcie ${i + 1}">
         <span class="photo-spinner"></span>
-        <img src="${url}" alt="Zdjęcie skrytki ${i + 1}" loading="lazy" />
+        <img src="${escapeHtml(url)}" alt="Zdjęcie skrytki ${i + 1}" loading="lazy" />
       </button>`
     )
     .join("");
@@ -160,7 +196,7 @@ function navigateLightbox(delta) {
 }
 
 function openTeamModal(teamName) {
-  const data = window.LEAGUE_DATA;
+  const data = getLeagueData();
   const team = data && data.teams.get(teamName);
   if (!team) return;
 
@@ -178,9 +214,9 @@ function openTeamModal(teamName) {
     .join("") || "<li class=\"muted\">Brak</li>";
 
   showModal(`
-    <h2><span class="color-dot" style="background:${team.color}"></span>${team.name}</h2>
+    <h2><span class="color-dot" style="background:${team.color}"></span>${escapeHtml(team.name)}</h2>
     <p class="score-line">Wynik: <strong>${formatScore(team.score)}</strong>
-      (stworzenie: ${team.stworzenie}, znalezienia: ${team.znalezienia}, suma: ${team.suma})</p>
+      (własna skrytka: ${team.creationPoint}, znalezienia: ${team.znalezienia})</p>
     <h3>Utworzone skrytki <span class="badge">${team.createdCaches.length}</span></h3>
     <ul class="detail-list">${created}</ul>
     <h3>Znalezione skrytki <span class="badge">${team.foundCaches.length}</span></h3>
@@ -188,13 +224,13 @@ function openTeamModal(teamName) {
   `);
 }
 
-function openGeocacheModal(fullName) {
-  const data = window.LEAGUE_DATA;
+export function openGeocacheModal(fullName) {
+  const data = getLeagueData();
   const geocache = data && data.geocaches.get(fullName);
   if (!geocache) return;
 
   const finders = geocache.finders.length
-    ? `<ul class="detail-list">${geocache.finders
+    ? `<ul class="detail-list finders-list">${geocache.finders
         .map((n) => `<li>${nameButton("team", n)}</li>`)
         .join("")}</ul>`
     : "<p class=\"muted\">Nikt jeszcze nie znalazł.</p>";
@@ -203,15 +239,15 @@ function openGeocacheModal(fullName) {
     ? mapsLink(geocache.coords)
     : `<p class="invalid-flag">⚠ Nieprawidłowa lokalizacja (${
         geocache.invalidReason === "out-of-bounds" ? "poza obszarem" : "nie udało się odczytać"
-      }): <code>${geocache.rawLocation}</code></p>`;
+      }): <code>${escapeHtml(geocache.rawLocation)}</code></p>`;
 
   showModal(`
-    <h2>${geocache.fullName}</h2>
+    <h2>${escapeHtml(geocache.fullName)} ${lackBadge(geocache.lacks)}</h2>
     <p>Utworzona przez: ${nameButton("team", geocache.creatorTeam)}</p>
-    <p class="hint-box"><strong>Wskazówka:</strong> ${geocache.hint || "<span class=\"muted\">brak</span>"}</p>
+    <p class="hint-box"><strong>Wskazówka:</strong> ${
+      geocache.hint ? escapeHtml(geocache.hint) : "<span class=\"muted\">brak</span>"
+    }</p>
     ${locationInfo}
-    <p class="stats-line">Znalazły: <strong>${geocache.finders.length}</strong> &nbsp;·&nbsp;
-      Nie znalazły: <strong>${geocache.lacks}</strong></p>
     ${photoStripHtml(geocache.photos)}
     <h3>Zespoły, które znalazły <span class="badge">${geocache.finders.length}</span></h3>
     ${finders}

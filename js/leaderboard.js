@@ -1,3 +1,7 @@
+import { fetchLeagueData, formatScore } from "./data.js";
+import { showLoading, hideLoading } from "./loading.js";
+import { nameButton, lackBadge } from "./detail-modal.js";
+
 // 'ok' = has at least one valid hiding, 'bad' = has hidings but all invalid,
 // 'none' = hasn't created any hidings yet.
 function teamLocationStatus(team) {
@@ -7,9 +11,9 @@ function teamLocationStatus(team) {
 
 const STATUS_ICON = { ok: "✅", bad: "⚠️", none: "❌" };
 const STATUS_LABEL = {
-  ok: "Przynajmniej jedna prawidłowa lokalizacja skrytki",
-  bad: "Wszystkie skrytki mają nieprawidłową lokalizację",
-  none: "Drużyna nie utworzyła jeszcze żadnej skrytki",
+  ok: "Prawidłowa lokalizacja",
+  bad: "Skrytka ma nieprawidłową lokalizację",
+  none: "Drużyna nie utworzyła żadnej skrytki",
 };
 
 function renderLeaderboard(data) {
@@ -42,7 +46,7 @@ function renderGeocacheList(data) {
         : "Nie udało się odczytać współrzędnych";
       return `
       <tr>
-        <td class="col-name col-name-wide">${nameButton("geocache", g.fullName)}</td>
+        <td class="col-name col-name-wide">${nameButton("geocache", g.fullName)} ${lackBadge(g.lacks)}</td>
         <td class="col-name">${nameButton("team", g.creatorTeam)}</td>
         <td class="col-num">${g.finders.length}</td>
         <td class="col-num" title="${locationTitle}">${g.isValid ? "✅" : "⚠️"}</td>

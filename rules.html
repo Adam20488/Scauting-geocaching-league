@@ -32,23 +32,10 @@
 
     <div class="card">
       <h2>Formularze</h2>
-      <div class="forms-grid">
-        <span id="forms-container"></span>
-      </div>
+      <div class="forms-grid" id="forms-container"></div>
     </div>
   </main>
 
-  <script src="js/forms.js"></script>
-  <script>
-    document.getElementById("forms-container").outerHTML = [
-      "registerTeam",
-      "createHiding",
-      "findHiding",
-      "reportNotFound",
-      "fixNotFound",
-    ]
-      .map((key) => formButton(key))
-      .join("");
-  </script>
+  <script type="module" src="js/rules.js"></script>
 </body>
 </html>

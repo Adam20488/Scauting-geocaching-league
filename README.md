@@ -15,3 +15,5 @@ Statyczna strona ligi geocachingowej dla zastępów/drużyn harcerskich. Bez bac
 ## Publikacja
 
 Zwykły GitHub Pages z głównej gałęzi — brak kroku budowania.
+
+Skrypty to moduły ES (`<script type="module">`), więc otwarcie plików przez `file://` nie zadziała — lokalnie uruchom np. `python -m http.server` i wejdź na `localhost:8000`.

@@ -1,3 +1,18 @@
+import { fetchLeagueData } from "./data.js";
+import { showLoading, hideLoading } from "./loading.js";
+import { nameButton, lackBadge, openGeocacheModal } from "./detail-modal.js";
+import { escapeHtml } from "./security.js";
+
+// Leaflet is loaded as a classic <script> in map.html, so `L` is a global.
+
+// The hover popup must never need scrolling (there's no comfortable way to
+// scroll a hover-only element), so the hint gets hard-truncated here — the
+// full text is still in the click-through modal.
+function truncateForPopup(text, maxLen) {
+  if (!text) return "";
+  return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + "…" : text;
+}
+
 function coloredDivIcon(color) {
   return L.divIcon({
     className: "team-marker",
@@ -31,21 +46,18 @@ function renderMap(data) {
       keyboard: false, // avoid focus-triggered auto-scroll on tap
     }).addTo(map);
 
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${g.coords.lat},${g.coords.lon}`;
     marker.bindPopup(
       `
         <div class="popup-content">
-          <h3>${g.fullName}</h3>
-          <div class="hint-box">${g.hint || "<span class=\"muted\">brak wskazówki</span>"}</div>
-          <p>Znalazło zespołów: <strong>${g.finders.length}</strong></p>
-          <a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <path fill="currentColor" d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
-            </svg>
-            Otwórz w Google Maps
-          </a>
+          <h3>${escapeHtml(g.fullName)} ${lackBadge(g.lacks)}</h3>
+          <p class="popup-hint">${
+            g.hint ? escapeHtml(truncateForPopup(g.hint, 140)) : "<span class=\"muted\">brak wskazówki</span>"
+          }</p>
+          <p class="popup-stats">Znalazło zespołów: <strong>${g.finders.length}</strong></p>
         </div>`,
       // autoPan off — panning the map on every hover felt jumpy/unwanted.
+      // No Google Maps link here — the popup closes on mouseout before a
+      // click could ever land on it, so it was dead weight.
       { maxHeight: 260, autoPan: false }
     );
 
@@ -94,9 +106,9 @@ function renderInvalidPanel(data) {
           const reason = INVALID_REASON_LABEL[g.invalidReason] || "nieznany problem";
           return `
         <li>
-          <strong>${g.cacheName}</strong> (${nameButton("team", g.creatorTeam)})
+          <strong>${escapeHtml(g.cacheName)}</strong> (${nameButton("team", g.creatorTeam)})
           — <span class="invalid-reason">${reason}</span>:
-          <code>${g.rawLocation || "(puste)"}</code>
+          <code>${g.rawLocation ? escapeHtml(g.rawLocation) : "(puste)"}</code>
         </li>`;
         })
         .join("")

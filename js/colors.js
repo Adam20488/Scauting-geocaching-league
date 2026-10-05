@@ -1,4 +1,4 @@
-function teamColor(index) {
+export function teamColor(index) {
   let hue = 0;
   let fraction = 180;
   let n = index;
